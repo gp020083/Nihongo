@@ -1,0 +1,6 @@
+{
+  "name": "Kotonoha 道場 — 全方位 JLPT N5-N1 日文精熟平台",
+  "description": "結合間隔重複記憶法 (SRS)、母語語境沉浸、AI 專屬導師即時問答與自訂教材智能出題的 N5 至 N1 日語學習與測驗系統。",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
