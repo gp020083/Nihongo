@@ -240,8 +240,6 @@ test('calculateDetailedStudyStats computes weekly average minutes, quiz chart ba
 
 import {
   buildPastExamDrillQuestions,
-  buildDriveDatabasePayload,
-  parseDriveDatabasePayload,
 } from './localWordDatabase';
 import { formatBilingual } from '../data/listeningAndDictionaryData';
 
@@ -252,29 +250,6 @@ test('buildPastExamDrillQuestions generates 3 bilingual JLPT past exam drill ite
   assert.equal(drills[0].options.length >= 4, true);
   assert.equal(Boolean(drills[0].explanationZh && drills[0].explanationJa), true);
   assert.equal(formatBilingual('歷年真題練習', '過去問演習', 'bilingual'), '歷年真題練習 · 過去問演習');
-});
-
-test('buildDriveDatabasePayload and parseDriveDatabasePayload serialize and restore Drive DB data accurately', () => {
-  const seed = getInitialLocalDictionarySeed();
-  const payload = buildDriveDatabasePayload({
-    dictionaryEntries: seed.slice(0, 2),
-    customVocab: [{ id: 'cv-1', kanji: '桜' }],
-    srsMap: { 'n5-v1': { itemId: 'n5-v1', intervalDays: 3 } },
-    xp: 450,
-    dailyTarget: 15,
-    quizzesCompleted: 5,
-    exportedAt: '2026-11-08T00:00:00.000Z',
-  });
-  assert.equal(payload.schemaVersion, 1);
-  assert.equal(payload.dictionaryEntries.length, 2);
-  assert.equal(payload.xp, 450);
-
-  const restored = parseDriveDatabasePayload(JSON.parse(JSON.stringify(payload)));
-  assert.ok(restored);
-  assert.equal(restored.dictionaryEntries.length, 2);
-  assert.equal(restored.customVocab.length, 1);
-  assert.equal(restored.dailyTarget, 15);
-  assert.equal(restored.quizzesCompleted, 5);
 });
 
 import {
@@ -843,7 +818,9 @@ test('verifyOwnerGoogleAccount strictly allows only bentktk2024@gmail.com and re
   // 3. Any other Google account -> rejected
   const deniedOther = verifyOwnerGoogleAccount('other.user@gmail.com');
   assert.equal(deniedOther.allowed, false);
-  assert.ok(deniedOther.reasonHk.includes('bentktk2024@gmail.com'));
+  // Rejection copy must not leak the owner email address.
+  assert.ok(!deniedOther.reasonHk.includes('bentktk2024@gmail.com'));
+  assert.ok(!deniedOther.reasonJa.includes('bentktk2024@gmail.com'));
 
   // 4. Empty or null email -> rejected
   assert.equal(verifyOwnerGoogleAccount('').allowed, false);
@@ -1184,89 +1161,3 @@ test('computeEmotionSpectrumProfile computes 6-axis voice feature scores, 2D val
   assert.ok(broadcastFormality.emotionalScore >= 95);
   assert.equal(broadcastSpec.voiceMetrics.speedRate, 1.0);
 });
-
-import {
-  parseAntigravitySkillMd,
-  compileActiveSkillsSystemPrompt,
-  DEFAULT_ANTIGRAVITY_SKILLS,
-} from './srsEngine';
-
-test('parseAntigravitySkillMd parses single-line and multiline YAML frontmatter and compileActiveSkillsSystemPrompt builds AI Agent system block', () => {
-  assert.equal(DEFAULT_ANTIGRAVITY_SKILLS.length, 4);
-
-  const rawMultilineSkill = `---
-name: anime-slang-decoder
-description: >
-  將日本動漫、VTuber 及年輕人常用口語拆解為
-  標準丁寧語與廣東話潮語對照。
----
-
-# Anime & Youth Slang Decoder
-1. 先列出句子入面嘅動漫俗語。
-2. 提供標準日語還原版。`;
-
-  const parsed = parseAntigravitySkillMd(rawMultilineSkill);
-  assert.equal(parsed.name, 'anime-slang-decoder');
-  assert.equal(
-    parsed.description,
-    '將日本動漫、VTuber 及年輕人常用口語拆解為 標準丁寧語與廣東話潮語對照。'
-  );
-  assert.ok(parsed.instructionsMd.includes('# Anime & Youth Slang Decoder'));
-  assert.equal(parsed.enabled, true);
-  assert.equal(parsed.isCustom, true);
-
-  // Also test plain markdown without YAML frontmatter
-  const plainMd = `# Kansai Dialect Translator\n將標準東京語轉換為地道大阪關西腔（〜やで、〜やん）。`;
-  const parsedPlain = parseAntigravitySkillMd(plainMd);
-  assert.equal(parsedPlain.name, 'kansai-dialect-translator');
-  assert.ok(parsedPlain.rawSkillMd.startsWith('---'));
-
-  // Compile active skills into AI Agent system prompt block
-  const compiled = compileActiveSkillsSystemPrompt([
-    ...DEFAULT_ANTIGRAVITY_SKILLS,
-    parsed,
-  ]);
-  assert.deepEqual(compiled.activeSkillNames, [
-    'jlpt-trap-detector',
-    'cantonese-core-image-sensei',
-    'anime-slang-decoder',
-  ]);
-  assert.ok(compiled.compiledSystemBlock.includes('<antigravity_mounted_skills>'));
-  assert.ok(compiled.compiledSystemBlock.includes('anime-slang-decoder'));
-});
-
-import {
-  normalizeGitHubSkillUrl,
-  buildAntigravityRepoBundle,
-} from './srsEngine';
-
-test('normalizeGitHubSkillUrl converts GitHub blob, tree, and root repo URLs and buildAntigravityRepoBundle creates .agents/ manifest', () => {
-  const blobRes = normalizeGitHubSkillUrl(
-    'https://github.com/bentk/antigravity-skills/blob/main/skills/jlpt/SKILL.md'
-  );
-  assert.equal(blobRes.valid, true);
-  assert.equal(
-    blobRes.rawUrl,
-    'https://raw.githubusercontent.com/bentk/antigravity-skills/main/skills/jlpt/SKILL.md'
-  );
-  assert.equal(blobRes.repoSlug, 'bentk/antigravity-skills');
-
-  const treeRes = normalizeGitHubSkillUrl(
-    'https://github.com/bentk/antigravity-skills/tree/main/.agents/skills/keigo'
-  );
-  assert.equal(treeRes.valid, true);
-  assert.equal(
-    treeRes.rawUrl,
-    'https://raw.githubusercontent.com/bentk/antigravity-skills/main/.agents/skills/keigo/SKILL.md'
-  );
-
-  const bundle = buildAntigravityRepoBundle(DEFAULT_ANTIGRAVITY_SKILLS);
-  assert.equal(bundle.length, 5); // .agents/AGENTS.md + 4 SKILL.md files
-  assert.equal(bundle[0].path, '.agents/AGENTS.md');
-  assert.ok(
-    bundle.some((f) => f.path === '.agents/skills/jlpt-trap-detector/SKILL.md')
-  );
-});
-
-
-

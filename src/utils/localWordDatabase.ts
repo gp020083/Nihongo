@@ -440,8 +440,8 @@ export function buildPastExamDrillQuestions(
 
   const item1: PastExamDrillItem = {
     id: `${entry.id}-past-1`,
-    yearTag: '2024年7月 真題題型 (問題1・文脈規定)',
-    questionTypeZh: '語境填空真題',
+    yearTag: '模擬題・問題1 文脈規定',
+    questionTypeZh: '語境填空',
     questionTypeJa: '文脈規定（空欄補充）',
     questionJp: q1Base.question,
     questionZh: `請根據句子前後語境，選出最適合填入（　　）嘅詞彙：`,
@@ -455,8 +455,8 @@ export function buildPastExamDrillQuestions(
   const synOptions = [primarySynonym, '無関係', '正反対', '不自然'];
   const item2: PastExamDrillItem = {
     id: `${entry.id}-past-2`,
-    yearTag: '2022年12月 真題題型 (問題3・類義語)',
-    questionTypeZh: '近義詞替換真題',
+    yearTag: '模擬題・問題3 類義語',
+    questionTypeZh: '近義詞替換',
     questionTypeJa: '類義語（言い換え問題）',
     questionJp: `下線部の「${entry.kanji}（${entry.reading}）」に意味が最も近いものを 1・2・3・4 から一つ選びなさい。\n「${cleanExJp}」`,
     questionZh: `請選出與底線詞「${entry.kanji}（${entry.reading}）」意思最接近嘅近義替換詞（例句譯文：${firstEx.zh}）：`,
@@ -476,7 +476,7 @@ export function buildPastExamDrillQuestions(
 
   const item3: PastExamDrillItem = {
     id: `${entry.id}-past-3`,
-    yearTag: '2020年12月 真題題型 (問題4・用法語義)',
+    yearTag: '模擬題・問題4 用法語義',
     questionTypeZh: '用法與詞義辨析',
     questionTypeJa: '用法・コアイメージ判定',
     questionJp: `次の「${entry.kanji}（${entry.reading}）」の語義・用法の説明として最も適当なものを選びなさい。`,
@@ -489,67 +489,3 @@ export function buildPastExamDrillQuestions(
 
   return [item1, item2, item3];
 }
-
-export interface DriveDatabasePayload {
-  schemaVersion: number;
-  appName: string;
-  exportedAt: string;
-  dictionaryEntries: SyncedDictionaryEntry[];
-  customVocab: any[];
-  srsMap: Record<string, any>;
-  xp: number;
-  dailyTarget: number;
-  quizzesCompleted: number;
-}
-
-export const DRIVE_DATABASE_FILENAME = 'kotonoha_dojo_database.json';
-
-/**
- * Pure deterministic builder for the Google Drive JSON database file.
- */
-export function buildDriveDatabasePayload(params: {
-  dictionaryEntries: SyncedDictionaryEntry[];
-  customVocab: any[];
-  srsMap: Record<string, any>;
-  xp: number;
-  dailyTarget: number;
-  quizzesCompleted: number;
-  exportedAt?: string;
-}): DriveDatabasePayload {
-  return {
-    schemaVersion: 1,
-    appName: 'Kotonoha Dojo 言の葉道場',
-    exportedAt: params.exportedAt || new Date().toISOString(),
-    dictionaryEntries: Array.isArray(params.dictionaryEntries) ? params.dictionaryEntries : [],
-    customVocab: Array.isArray(params.customVocab) ? params.customVocab : [],
-    srsMap: params.srsMap && typeof params.srsMap === 'object' ? params.srsMap : {},
-    xp: typeof params.xp === 'number' ? params.xp : 0,
-    dailyTarget: typeof params.dailyTarget === 'number' ? params.dailyTarget : 10,
-    quizzesCompleted: typeof params.quizzesCompleted === 'number' ? params.quizzesCompleted : 0,
-  };
-}
-
-/**
- * Pure parser and validator for restoring a DriveDatabasePayload from Google Drive JSON.
- */
-export function parseDriveDatabasePayload(raw: any): DriveDatabasePayload | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const rawEntries = Array.isArray(raw.dictionaryEntries) ? raw.dictionaryEntries : [];
-  const normalizedEntries = rawEntries
-    .filter((item: any) => item && item.kanji)
-    .map((item: any) => normalizeDictionaryEntry(item, item.kanji));
-
-  return {
-    schemaVersion: Number(raw.schemaVersion) || 1,
-    appName: String(raw.appName || 'Kotonoha Dojo 言の葉道場'),
-    exportedAt: String(raw.exportedAt || new Date().toISOString()),
-    dictionaryEntries: normalizedEntries,
-    customVocab: Array.isArray(raw.customVocab) ? raw.customVocab : [],
-    srsMap: raw.srsMap && typeof raw.srsMap === 'object' ? raw.srsMap : {},
-    xp: typeof raw.xp === 'number' ? raw.xp : 340,
-    dailyTarget: typeof raw.dailyTarget === 'number' ? raw.dailyTarget : 10,
-    quizzesCompleted: typeof raw.quizzesCompleted === 'number' ? raw.quizzesCompleted : 2,
-  };
-}
-
-

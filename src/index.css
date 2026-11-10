@@ -1,5 +1,102 @@
 @import "tailwindcss";
 
+/* Dark mode follows the `dark` class that App toggles on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   Kotonoha calm editorial tokens: paper, ink, one indigo accent 藍
+   Utilities: bg-paper, bg-surface, text-ink, text-ink-soft, text-ink-faint,
+   border-line, bg-ai, text-ai-ink, bg-ai-soft, font-jp
+   ========================================================================== */
+@theme {
+  --color-paper: #FAF8F3;
+  --color-surface: #FFFFFF;
+  --color-sunken: #F3F0E8;
+  --color-ink: #1C1C1C;
+  --color-ink-soft: #57544E;
+  --color-ink-faint: #8D8981;
+  --color-line: #E9E5DC;
+  --color-ai: #2B4C7E;
+  --color-ai-hover: #233F69;
+  --color-ai-ink: #2B4C7E;
+  --color-ai-soft: #EDF1F7;
+  --color-ok: #2F7D5B;
+  --color-ng: #B4413C;
+
+  --font-jp: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+
+  /* Retint the legacy sky accent used inside feature panels to 藍 indigo */
+  --color-sky-50: #F0F4F9;
+  --color-sky-100: #DDE6F1;
+  --color-sky-200: #BCCDE3;
+  --color-sky-300: #93AECF;
+  --color-sky-400: #6A8DBA;
+  --color-sky-500: #4A6FA0;
+  --color-sky-600: #2B4C7E;
+  --color-sky-700: #233F69;
+  --color-sky-800: #1C3254;
+  --color-sky-900: #15263F;
+  --color-sky-950: #0E1A2C;
+}
+
+html.dark {
+  --color-paper: #101216;
+  --color-surface: #171A20;
+  --color-sunken: #1D2129;
+  --color-ink: #ECEAE4;
+  --color-ink-soft: #B9B6AE;
+  --color-ink-faint: #85827B;
+  --color-line: #2A2F38;
+  --color-ai: #3A5D94;
+  --color-ai-hover: #46699F;
+  --color-ai-ink: #9DB8E2;
+  --color-ai-soft: #1D2636;
+  --color-ok: #5FB98E;
+  --color-ng: #E07A73;
+  color-scheme: dark;
+}
+
+/* Legacy hard-coded accent hex classes inside feature panels → 藍 */
+.bg-\[\#0284C7\]:not(:hover) {
+  background-color: #2B4C7E;
+}
+.text-\[\#0284C7\] {
+  color: #2B4C7E;
+}
+.border-\[\#0284C7\] {
+  border-color: #2B4C7E;
+}
+
+.font-jp {
+  font-family: var(--font-jp);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes kotonoha-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe-transition {
+    transition: none !important;
+  }
+}
+
 @layer base {
   :root {
     --font-display: 'Fraunces', 'Noto Sans JP', serif;
@@ -9,8 +106,8 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #F8FAFC;
-    color: #0F172A;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     overflow-x: hidden;
   }
 
@@ -175,8 +272,8 @@ rt {
    Kotonoha Dojo — High-Craft Midnight Dark Mode (深色道場模式)
    ========================================================================== */
 html.dark body {
-  background-color: #0B1120;
-  color: #F1F5F9;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
 }
 
 html.dark rt {
@@ -280,7 +377,7 @@ html.dark .text-slate-500 {
 }
 
 html.dark .text-\[\#0284C7\] {
-  color: #38BDF8 !important;
+  color: #9DB8E2 !important;
 }
 
 html.dark .text-amber-800,

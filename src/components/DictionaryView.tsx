@@ -16,7 +16,6 @@ import {
   WifiOff,
   Award,
   ArrowRight,
-  Cloud,
   Activity,
 } from 'lucide-react';
 import { UiLang, formatBilingual } from '../data/listeningAndDictionaryData';
@@ -46,7 +45,6 @@ interface DictionaryViewProps {
   onSaveWordToSrs: (item: VocabItem) => void;
   onAskSenseiWithContext: (promptText: string, item?: any) => void;
   onStartPastExamQuiz?: (questions: QuizQuestion[]) => void;
-  onOpenGoogleDriveSync?: () => void;
 }
 
 export const DictionaryView: React.FC<DictionaryViewProps> = ({
@@ -60,7 +58,6 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
   onSaveWordToSrs,
   onAskSenseiWithContext,
   onStartPastExamQuiz,
-  onOpenGoogleDriveSync,
 }) => {
   const [selectedId, setSelectedId] = useState<string>(entries[0]?.id || 'dict-sawayaka');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -262,8 +259,8 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
 
             <p className="text-xs text-slate-500">
               {formatBilingual(
-                '中日雙語並排顯示・內置離線本地詞庫，一經連線即自動從雲端及 AI 擴充最新詞條與歷年真題',
-                '中日バイリンガル表示・ローカルDB搭載でオフライン検索＆オンライン自動更新対応',
+                '中日雙語對照・離線都可以查本地詞庫，連線時可以用 AI 補充新詞條同考點練習',
+                '中日対訳表示・オフライン検索対応、オンライン時は AI で項目を追加',
                 uiLang,
                 ' ｜ '
               )}
@@ -333,18 +330,6 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
               <span>{formatBilingual('同步詞庫', 'DB同期', uiLang)}</span>
             </button>
 
-            {onOpenGoogleDriveSync && (
-              <button
-                type="button"
-                data-testid="dict-google-drive-btn"
-                onClick={onOpenGoogleDriveSync}
-                title="將字庫及學習數據儲存至你嘅 Google Drive"
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#0284C7] bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-              >
-                <Cloud className="w-3.5 h-3.5" />
-                <span>{formatBilingual('Google Drive 雲端儲存', 'Googleドライブ保存', uiLang)}</span>
-              </button>
-            )}
           </form>
         </div>
 
@@ -540,7 +525,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                 <button
                   type="button"
                   onClick={handleOpenPastExamPractice}
-                  title="點擊查看此等級歷年真題考點分析"
+                  title="查看此等級嘅考點分析"
                   className="inline-flex items-center gap-1 px-3 py-1 rounded-md bg-[#EEEEF0] hover:bg-rose-50 hover:text-rose-600 text-xs font-semibold text-slate-700 font-mono-num transition-colors cursor-pointer"
                 >
                   <span>{activeEntry.jlptLevels}</span>
@@ -806,8 +791,8 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
 
                   <span className="text-[11px] font-mono-num text-slate-400">
                     {formatBilingual(
-                      `已完成真題 ${completedDrillCount}/${drillQuestions.length}`,
-                      `過去問演習 ${completedDrillCount}/${drillQuestions.length}`,
+                      `已完成練習 ${completedDrillCount}/${drillQuestions.length}`,
+                      `練習問題 ${completedDrillCount}/${drillQuestions.length}`,
                       uiLang
                     )}
                   </span>
@@ -820,7 +805,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                       1
                     </span>
                     <span className="text-base font-bold text-slate-900">
-                      {formatBilingual('考了多少次？', '出題回数は？', uiLang)}
+                      {formatBilingual('出題頻率・參考', '出題頻度・参考', uiLang)}
                     </span>
                   </div>
 
@@ -831,7 +816,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                     className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-xs font-bold text-rose-600 inline-flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
                   >
                     <span>
-                      {formatBilingual('歷年真題練習', '過去問演習', uiLang)} (
+                      {formatBilingual('考點練習', '練習問題', uiLang)} (
                       {drillQuestions.length}題)
                     </span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -853,7 +838,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                       {activeEntry.jlptStats.historicalCount}
                     </div>
                     <div className="text-[11px] text-slate-500 mt-1">
-                      {formatBilingual('歷年真題數', '過去問題数', uiLang)}
+                      {formatBilingual('參考出題數', '参考出題数', uiLang)}
                     </div>
                   </div>
                   <div className="px-2">
@@ -911,7 +896,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                     <div className="flex items-center gap-1.5">
                       <Award className="w-4 h-4 text-rose-500 shrink-0" />
                       <span className="text-xs font-bold text-slate-800">
-                        {formatBilingual('歷年真題實戰演練', '過去問ミニテスト演習', uiLang)}
+                        {formatBilingual('考點練習', '練習問題', uiLang)}
                       </span>
                     </div>
 
@@ -936,7 +921,7 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                                   : 'bg-white text-slate-600 border border-slate-200 hover:border-rose-300'
                             }`}
                           >
-                            真題 {qIdx + 1}
+                            第 {qIdx + 1} 題
                           </button>
                         );
                       })}
@@ -1041,8 +1026,8 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                       className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-rose-300 text-xs font-semibold text-slate-700 hover:text-rose-600 transition-colors cursor-pointer"
                     >
                       {formatBilingual(
-                        `切換下一題真題 (${safeDrillIdx + 1}/${drillQuestions.length})`,
-                        `次の過去問へ (${safeDrillIdx + 1}/${drillQuestions.length})`,
+                        `下一題・${safeDrillIdx + 1}/${drillQuestions.length}`,
+                        `次の問題へ・${safeDrillIdx + 1}/${drillQuestions.length}`,
                         uiLang
                       )}
                     </button>
@@ -1056,8 +1041,8 @@ export const DictionaryView: React.FC<DictionaryViewProps> = ({
                       >
                         <span>
                           {formatBilingual(
-                            '進入實戰測驗場全真演練',
-                            '実戦テストモードで挑戦',
+                            '用測驗模式練習',
+                            'テストモードで練習',
                             uiLang
                           )}
                         </span>

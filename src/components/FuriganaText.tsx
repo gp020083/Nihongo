@@ -68,47 +68,48 @@ export const VOICE_STYLE_OPTIONS: Array<{
   labelJa: string;
   badge: string;
 }> = [
+  // Ids are persisted in localStorage (kotonoha_voice_config_v2), so keep them unchanged.
   {
     id: 'nhk-anchor',
-    labelZh: '📻 NHK 新聞雙主播標準音 (真人男主播 ＋ NHK 女主播雙聲道 · 推薦)',
-    labelJa: '📻 NHK男女ペアアナウンサー (男性アナ＋NHK女性アナ標準音)',
-    badge: 'NHK 男女雙主播',
+    labelZh: '男女雙聲・預設',
+    labelJa: '男女ペア音声',
+    badge: '男女雙聲',
   },
   {
     id: 'nhk-female',
-    labelZh: '🎙️ 東京標準新聞女主播 (清澈明快東京女聲 · 字正腔圓)',
-    labelJa: '🎙️ 東京標準女性アナウンサー (明瞭で聞き取りやすい女性声)',
-    badge: '東京標準女聲',
+    labelZh: '標準女聲',
+    labelJa: '標準女性音声',
+    badge: '標準女聲',
   },
   {
     id: 'nhk-male',
-    labelZh: '🎙️ 真人深沉新聞男主播 (低沉磁性真人男聲 · 穩重男中音)',
-    labelJa: '🎙️ 本格派男性アナウンサー (落ち着いた深みのある男性低音)',
-    badge: '真人深沉男聲',
+    labelZh: '標準男聲',
+    labelJa: '標準男性音声',
+    badge: '標準男聲',
   },
   {
     id: 'cloud-stream',
-    labelZh: '⚡ NHK 廣播直出女聲 (廣播級流暢女主播 · 秒開零卡頓)',
-    labelJa: '⚡ NHK放送ストリーム女性音声 (遅延なし・最も滑らか)',
-    badge: 'NHK 廣播直出',
+    labelZh: '播報風格',
+    labelJa: 'アナウンス調',
+    badge: '播報風格',
   },
   {
     id: 'neural-female',
-    labelZh: '🌸 東京溫柔日常女聲 (柔和親切女聲 · 日常生活會話腔)',
-    labelJa: '🌸 東京やさしい日常女性音声 (穏やかで自然な会話調)',
-    badge: '東京溫柔女聲',
+    labelZh: '溫柔女聲',
+    labelJa: 'やさしい女性音声',
+    badge: '溫柔女聲',
   },
   {
     id: 'neural-male',
-    labelZh: '✨ 動漫元氣聲優腔 (抑揚頓挫鮮明聲優音 · 語感強化)',
-    labelJa: '✨ アニメ声優風表現ボイス (抑揚がはっきりした元気な声)',
-    badge: '動漫元氣聲優',
+    labelZh: '活潑女聲',
+    labelJa: '元気な女性音声',
+    badge: '活潑女聲',
   },
   {
     id: 'system-natural',
-    labelZh: '🔊 本機系統原生語音 (原音 1.0 Pitch 零變調無損直出)',
-    labelJa: '🔊 端末システムネイティブ音声 (ピッチ無加工・高速)',
-    badge: '本機無損原音',
+    labelZh: '瀏覽器原生',
+    labelJa: 'ブラウザ標準音声',
+    badge: '瀏覽器原生',
   },
 ];
 
@@ -372,7 +373,7 @@ function speakWithWebSpeechFallback(
 /**
  * Speaks a single Japanese line or automatically delegates multi-speaker scripts
  * so speaker labels like "男：" and "女：" are NEVER read aloud.
- * Uses smooth NHK / Cloud Stream / Tokyo Neural voices without WSOLA choppiness.
+ * Uses the server TTS voices when available, otherwise the browser Web Speech voices.
  */
 export async function speakJapanese(
   text: string,
@@ -482,7 +483,7 @@ export interface SpeakDialogueOptions {
 }
 
 /**
- * Plays a multi-speaker JLPT listening dialogue using smooth NHK / Cloud Neural voices:
+ * Plays a multi-speaker JLPT listening dialogue using server TTS or browser voices:
  * 1) Never reads speaker labels ("男：", "女：", etc.) aloud
  * 2) Adjusts speech speed cleanly without WSOLA choppiness
  * 3) Synthesizes distinct Male (Charon/Puck) and Female (Kore/Zephyr) broadcast voices
@@ -557,7 +558,7 @@ export async function speakJapaneseDialogue(options: SpeakDialogueOptions): Prom
           VOICE_STYLE_OPTIONS.find((o) => o.id === currentVoiceConfig.voiceStyle) ||
           VOICE_STYLE_OPTIONS[0];
         options.onStart?.({
-          engineLabel: `NHK・雲端流暢雙聲道 (${styleMeta.badge} · ${effectiveRate}x)`,
+          engineLabel: `線上語音・${styleMeta.badge} · ${effectiveRate}x`,
           rate: effectiveRate,
           turns,
         });
@@ -601,7 +602,7 @@ function runWebSpeechMultiVoiceSequence(
     const voices = window.speechSynthesis.getVoices();
 
     options.onStart?.({
-      engineLabel: `本機無損雙聲道語音 (${effectiveRate}x)`,
+      engineLabel: `瀏覽器語音・${effectiveRate}x`,
       rate: effectiveRate,
       turns,
     });

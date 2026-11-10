@@ -52,7 +52,7 @@ export const MethodBlueprint: React.FC<MethodBlueprintProps> = ({
                 02. 語境沉浸與可理解輸入 (Comprehensible Input i+1)
               </div>
               <p className="text-xs text-slate-600 mt-1">
-                所有單字同文法都附帶日本生活／商務真實句子、振假名開關與真人語速發音，建立「聲音 → 畫面」直接反射。
+                所有單字同文法都附帶日本生活／商務真實句子、振假名開關與自然語速發音，建立「聲音 → 畫面」直接反射。
               </p>
             </div>
 

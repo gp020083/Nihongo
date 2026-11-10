@@ -2651,7 +2651,7 @@ export function scoreJlptMockExam(
   }
 
   const feedbackHk = isPassed
-    ? `恭喜合格！你喺 JLPT ${level} 全真模擬試取得 ${totalScaledScore}/180 分（合格線：${overallPassThreshold}分），而且三科均達到 19 分以上基準點！`
+    ? `恭喜合格！你喺 JLPT ${level} 模擬題取得 ${totalScaledScore}/180 分（合格線：${overallPassThreshold}分），而且三科均達到 19 分以上基準點！`
     : !passedAllSections
       ? `今次總分為 ${totalScaledScore}/180 分，但有單科未達 JLPT 19/60 分最低基準點（單科未達標即屬不合格）。建議針對弱項科目用 AI Sensei 進行特訓！`
       : `今次總分為 ${totalScaledScore}/180 分，距離 ${level} 合格線（${overallPassThreshold}分）仲差 ${overallPassThreshold - totalScaledScore} 分。檢視下方錯題詳解再挑戰一次啦！`;

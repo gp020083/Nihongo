@@ -355,8 +355,8 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
     setActivePaperOverride(nextDraw.paper);
     setGenerationNotice(
       nextDraw.cycleReset
-        ? `🔄 已完成本級全部題庫一輪！系統已重置不重複紀錄並重新洗牌組出第 #${(paperEditionByLevel[selectedLevel] || 1) + 1} 回新卷（${nextDraw.paper.length}題）。`
-        : `🎲 已從題庫抽取 ${nextDraw.unseenCountUsed} 題未做過嘅全新題目組出第 #${(paperEditionByLevel[selectedLevel] || 1) + 1} 回試卷（保證不重複）！`
+        ? `本級題庫已做完一輪，已重置紀錄並重新洗牌，組成第 #${(paperEditionByLevel[selectedLevel] || 1) + 1} 回新卷（${nextDraw.paper.length}題）。`
+        : `已從題庫抽取 ${nextDraw.unseenCountUsed} 題未做過嘅題目，組成第 #${(paperEditionByLevel[selectedLevel] || 1) + 1} 回試卷。`
     );
     setUserAnswers({});
     setFlaggedIds({});
@@ -447,7 +447,7 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
       }));
       setActivePaperOverride(nextDraw.paper);
       setGenerationNotice(
-        `✨ 已隨機生成 ${uniqueNewQuestions.length} 題全新題目加入 ${selectedLevel} 題庫（現有 ${mergedPool.filter((q) => q.level === selectedLevel).length} 題），並組出第 #${(paperEditionByLevel[selectedLevel] || 1) + 1} 回不重複新試卷！`
+        `已新增 ${uniqueNewQuestions.length} 題到 ${selectedLevel} 題庫，現有 ${mergedPool.filter((q) => q.level === selectedLevel).length} 題，並組成第 #${(paperEditionByLevel[selectedLevel] || 1) + 1} 回試卷。`
       );
       setUserAnswers({});
       setFlaggedIds({});
@@ -480,7 +480,7 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
       }));
       setActivePaperOverride(nextDraw.paper);
       setGenerationNotice(
-        `✨ 已隨機生成全新題目並組出第 #${(paperEditionByLevel[selectedLevel] || 1) + 1} 回不重複模擬卷！`
+        `已生成新題目並組成第 #${(paperEditionByLevel[selectedLevel] || 1) + 1} 回模擬卷。`
       );
       setUserAnswers({});
       setFlaggedIds({});
@@ -517,7 +517,7 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-0.5 rounded bg-slate-900 text-white text-xs font-bold tracking-wider">
-                JLPT 日本語能力試験・全真模擬考場
+                JLPT 模擬試験
               </span>
               <span className="px-2.5 py-0.5 rounded bg-sky-50 text-[#0284C7] border border-sky-200 text-xs font-semibold font-mono-num">
                 180点満点（言語知識 60 · 読解 60 · 聴解 60）
@@ -528,15 +528,15 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
               {formatBilingual(
-                `JLPT ${selectedLevel} 日本語能力試 全真模擬測驗（第 #${currentEditionNum} 回試卷）`,
-                `JLPT ${selectedLevel} 日本語能力試験 実戦模擬テスト（第 #${currentEditionNum} 回）`,
+                `JLPT ${selectedLevel} 模擬題・第 ${currentEditionNum} 回`,
+                `JLPT ${selectedLevel} 模擬テスト・第 ${currentEditionNum} 回`,
                 uiLang
               )}
             </h2>
             <p className="text-xs sm:text-sm text-slate-600">
               {formatBilingual(
-                '涵蓋「★星號句子重組」、「段落文法」、「AB比較讀解」、「情報檢索」及「男女雙聲道聽解」，自動追蹤已做題目確保每次抽卷絕不重複。',
-                '「★文の組み立て」「文章の文法」「A/B比較読解」「情報検索」「男女別ボイス聴解」を網羅。出題履歴を管理し重複しない模擬試験を構成します。',
+                '涵蓋星號句子重組、段落文法、AB 比較讀解、情報檢索同男女對話聽解。會記錄做過嘅題目，盡量避免重複。',
+                '文の組み立て・文章の文法・統合理解・情報検索・聴解を収録。出題履歴をもとに重複を減らします。',
                 uiLang
               )}
             </p>
@@ -742,8 +742,8 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
                 <Gauge className="w-3.5 h-3.5 text-[#0284C7]" />
                 <span>
                   {formatBilingual(
-                    '聴解男女雙聲道與語速自由微調：',
-                    '聴解男女別ボイス＆再生速度調整：',
+                    '聽解語速：',
+                    '聴解の再生速度：',
                     uiLang
                   )}
                 </span>
@@ -810,7 +810,7 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200 hover:bg-indigo-100 cursor-pointer"
               >
                 <Volume2 className="w-3 h-3" />
-                <span>試聽「男低音 Orus ＋ 女清亮音 Aoede」({effectiveSpeechRate.toFixed(2)}x)</span>
+                <span>試聽男女對話・{effectiveSpeechRate.toFixed(2)}x</span>
               </button>
             </div>
           </div>
@@ -838,8 +838,8 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
                 },
                 {
                   id: 'listening',
-                  zh: '第3科目：聽解（男女雙聲道語音）',
-                  ja: '第3科目：聴解（男女別ボイス付）',
+                  zh: '第3科目：聽解',
+                  ja: '第3科目：聴解',
                 },
               ] as const
             ).map((sec) => (
@@ -989,7 +989,7 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
               type="button"
               onClick={() =>
                 onAskSenseiWithContext(
-                  `Sensei，我啱啱完成咗 JLPT ${selectedLevel} 全真模擬試，總分攞到 ${scoreReport.totalScaledScore}/180 分（言語知識 ${scoreReport.sections.vocab_grammar.scaledScore}/60、讀解 ${scoreReport.sections.reading.scaledScore}/60、聽解 ${scoreReport.sections.listening.scaledScore}/60）。請幫我制定針對性嘅衝刺溫習策略！`
+                  `Sensei，我啱啱完成咗 JLPT ${selectedLevel} 模擬題，總分攞到 ${scoreReport.totalScaledScore}/180 分（言語知識 ${scoreReport.sections.vocab_grammar.scaledScore}/60、讀解 ${scoreReport.sections.reading.scaledScore}/60、聽解 ${scoreReport.sections.listening.scaledScore}/60）。請幫我制定針對性嘅衝刺溫習策略！`
                 )
               }
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#0284C7] hover:bg-sky-700 rounded-lg whitespace-nowrap shrink-0 cursor-pointer"
@@ -1052,8 +1052,8 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
                           <Volume2 className="w-4 h-4 text-[#0284C7]" />
                           <span>
                             {formatBilingual(
-                              '聴解問題音声（雙聲道男女分軌・不讀「男：/女：」前綴）',
-                              '聴解問題音声（男女別ボイス・話者ラベル読み上げなし）',
+                              '聽解音聲・男女分聲朗讀',
+                              '聴解音声・男女別ボイス',
                               uiLang
                             )}
                           </span>
@@ -1119,7 +1119,7 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
                                   turn,
                                   engineLabel:
                                     prev?.engineLabel ||
-                                    '雙聲道男女分軌語音 (男低音 · 女清亮音)',
+                                    '男女分聲朗讀',
                                 }));
                               },
                               onEnd: () => {
@@ -1226,8 +1226,8 @@ export const JlptMockExamCenter: React.FC<JlptMockExamCenterProps> = ({
                       >
                         <span>
                           {useNaturalServerTts
-                            ? '🎙️ 真人雙聲道 (男低音 Orus + 女清亮 Aoede) 已啟用'
-                            : '🔊 瀏覽器高低音男女分軌 (Pitch 0.64 vs 1.28)'}
+                            ? '線上語音・已啟用'
+                            : '瀏覽器語音'}
                         </span>
                       </button>
                     </div>

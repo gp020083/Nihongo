@@ -320,7 +320,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Award className="w-3.5 h-3.5 text-amber-600" />
-                <span>{formatBilingual('進入 180分制全真模擬考', '180点満点・公式模試へ', uiLang)}</span>
+                <span>{formatBilingual('進入 180 分制模擬考', '180点満点・模擬試験へ', uiLang)}</span>
               </button>
             )}
 

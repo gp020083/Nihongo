@@ -1343,8 +1343,8 @@ export const DetailedStudyStatsPanel: React.FC<DetailedStudyStatsPanelProps> = (
                                 </span>
                                 <span className="text-[11px] text-slate-500">
                                   {challenge.generatedBy === 'ai-sensei'
-                                    ? '🤖 AI 專屬語音命題'
-                                    : '⚡ 弱點語境聽寫引擎'}
+                                    ? 'AI 生成題目'
+                                    : '內置弱點聽寫'}
                                 </span>
                               </div>
 
@@ -1638,7 +1638,7 @@ export const DetailedStudyStatsPanel: React.FC<DetailedStudyStatsPanelProps> = (
 
                     {/* Actionable Tip */}
                     <div className="bg-emerald-50/80 border border-emerald-200 rounded-lg p-2.5 text-xs text-emerald-950 leading-relaxed">
-                      <strong className="text-emerald-800">💡 擊破鐵則：</strong>
+                      <strong className="text-emerald-800">改善要點：</strong>
                       {gItem.actionableTipHk}
                     </div>
                   </div>

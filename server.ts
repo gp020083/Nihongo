@@ -46,14 +46,62 @@ async function generateFastAiContent(
   ]);
 }
 
+interface TutorSkill {
+  name: string;
+  description: string;
+  instructionsMd: string;
+}
+
+let builtInTutorSkillsCache: TutorSkill[] | null = null;
+
+/**
+ * Loads the built-in teaching skills from .agents/skills/<name>/SKILL.md once and caches them.
+ * Each file has a YAML frontmatter block with `name` and `description`, followed by Markdown rules.
+ */
+function getBuiltInTutorSkills(): TutorSkill[] {
+  if (builtInTutorSkillsCache) return builtInTutorSkillsCache;
+  const skills: TutorSkill[] = [];
+  const skillsRoot = path.join(__dirname, '.agents', 'skills');
+  try {
+    const dirs = fs
+      .readdirSync(skillsRoot, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+      .sort();
+    for (const dir of dirs) {
+      const filePath = path.join(skillsRoot, dir, 'SKILL.md');
+      if (!fs.existsSync(filePath)) continue;
+      const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
+      const fm = raw.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n?([\s\S]*)$/);
+      const front = fm ? fm[1] : '';
+      const body = (fm ? fm[2] : raw).trim();
+      const pick = (key: string) => {
+        const m = front.match(new RegExp(`^${key}:\\s*(.*)$`, 'm'));
+        return m ? m[1].trim().replace(/^['"]|['"]$/g, '') : '';
+      };
+      if (!body) continue;
+      skills.push({
+        name: pick('name') || dir,
+        description: pick('description'),
+        instructionsMd: body,
+      });
+    }
+  } catch (error: any) {
+    console.warn('Built-in tutor skills not loaded:', error?.message || error);
+  }
+  builtInTutorSkillsCache = skills;
+  return skills;
+}
+
 async function startServer() {
+  getBuiltInTutorSkills();
   const app = express();
   const PORT = 3000;
 
   // Support base64 videos, images, and PDFs up to 50MB
   app.use(express.json({ limit: '50mb' }));
 
-  // 1. AI Japanese Sensei Tutor Chat (with optional uploaded material/image/video context & Antigravity SKILL.md injection)
+  // 1. AI Japanese Sensei Tutor Chat (with optional uploaded material/image/video context & built-in tutor skill injection)
   app.post('/api/ai/tutor', async (req, res) => {
     try {
       const {
@@ -68,22 +116,25 @@ async function startServer() {
         return res.status(400).json({ error: '請輸入問題內容' });
       }
 
+      // Skills explicitly sent by an older client are honoured (legacy); otherwise the
+      // built-in .agents/skills/*/SKILL.md teaching skills are injected automatically.
       const validSkills = Array.isArray(activeSkills)
         ? activeSkills.filter(
             (s: any) => s && s.enabled !== false && s.name && s.instructionsMd
           )
         : [];
-      const injectedSkills = validSkills.map((s: any) => String(s.name).trim());
+      const promptSkills = validSkills.length > 0 ? validSkills : getBuiltInTutorSkills();
+      const injectedSkills = promptSkills.map((s: any) => String(s.name).trim());
       const skillSystemBlock =
-        validSkills.length > 0
-          ? `\n\n<antigravity_mounted_skills>\n用戶已將以下 ${validSkills.length} 個 Antigravity Skill (SKILL.md) 射入你（AI Agent）嘅執行環境。請喺回答時嚴格遵守並執行以下每個 Skill 嘅規則與輸出格式：\n\n${validSkills
+        promptSkills.length > 0
+          ? `\n\n<tutor_skills>\n請喺回答時遵守以下 ${promptSkills.length} 個教學技能嘅規則與輸出格式（只套用同學生提問相關嘅技能）：\n\n${promptSkills
               .map(
                 (s: any, idx: number) =>
-                  `### [Mounted Antigravity Skill #${idx + 1}: ${s.name}]\n- Description: ${
+                  `### [Tutor Skill #${idx + 1}: ${s.name}]\n- Description: ${
                     s.description || ''
-                  }\n- Mandatory Skill Instructions:\n${s.instructionsMd}`
+                  }\n- Skill Instructions:\n${s.instructionsMd}`
               )
-              .join('\n\n')}\n</antigravity_mounted_skills>`
+              .join('\n\n')}\n</tutor_skills>`
           : '';
 
       const ai = getAiClient();
@@ -91,7 +142,7 @@ async function startServer() {
         return res.json({
           reply: generateSmartFallbackReply(message, level, contextItem, validSkills),
           source: 'curated-engine',
-          injectedSkills,
+          injectedSkills: validSkills.map((s: any) => String(s.name).trim()),
         });
       }
 
@@ -165,62 +216,6 @@ async function startServer() {
         source: 'curated-fallback',
         injectedSkills: validSkills.map((s: any) => String(s.name).trim()),
         warning: error?.message,
-      });
-    }
-  });
-
-  // 1b. GitHub & Antigravity .agents/skills/ Bi-directional Sync (/api/ai/github-skill-sync)
-  app.post('/api/ai/github-skill-sync', async (req, res) => {
-    try {
-      const { mode = 'write-workspace', rawUrl = '', files = [] } = req.body || {};
-
-      if (mode === 'pull' && typeof rawUrl === 'string' && rawUrl.startsWith('https://')) {
-        const resp = await fetch(rawUrl, {
-          headers: {
-            Accept: 'text/plain, text/markdown, */*',
-            'User-Agent': 'Kotonoha-Antigravity-Skill-Sync/1.0',
-          },
-        });
-        if (!resp.ok) {
-          return res.status(400).json({
-            error: `無法從 GitHub 讀取 SKILL.md (HTTP ${resp.status})，請確認 Repo 為 Public 或網址正確。`,
-          });
-        }
-        const rawSkillMd = await resp.text();
-        return res.json({
-          ok: true,
-          rawSkillMd,
-          syncedAt: new Date().toISOString(),
-        });
-      }
-
-      // Default mode: write .agents/AGENTS.md and .agents/skills/<name>/SKILL.md into workspace so GitHub sync includes them
-      const writtenPaths: string[] = [];
-      if (Array.isArray(files)) {
-        for (const f of files) {
-          if (
-            f &&
-            typeof f.path === 'string' &&
-            f.path.startsWith('.agents/') &&
-            !f.path.includes('..') &&
-            typeof f.content === 'string'
-          ) {
-            const absTarget = path.join(__dirname, f.path);
-            fs.mkdirSync(path.dirname(absTarget), { recursive: true });
-            fs.writeFileSync(absTarget, f.content, 'utf8');
-            writtenPaths.push(f.path);
-          }
-        }
-      }
-
-      return res.json({
-        ok: true,
-        writtenPaths,
-        syncedAt: new Date().toISOString(),
-      });
-    } catch (error: any) {
-      return res.status(500).json({
-        error: error?.message || 'GitHub Skill Sync failed',
       });
     }
   });
@@ -779,7 +774,7 @@ ${text ? `學生提供嘅文字／影片筆記內容：\n"""\n${text}\n"""` : '�
     try {
       const {
         level = 'N4',
-        focusTopic = 'JLPT全真綜合模擬考',
+        focusTopic = 'JLPT 綜合模擬考',
         excludePrompts = [],
         count = 12,
       } = req.body || {};
@@ -804,7 +799,7 @@ ${text ? `學生提供嘅文字／影片筆記內容：\n"""\n${text}\n"""` : '�
       const readingQuota = Math.round(targetTotal * (4 / 12));
       const listeningQuota = Math.max(2, targetTotal - vocabQuota - readingQuota);
 
-      const prompt = `你係日本國際交流基金 JLPT 日本語能力試驗嘅首席命題委員。請為 JLPT ${level} 考生全新創作一份包含 ${targetTotal} 條題目、題型高度多元化且絕不重複嘅全真模擬試卷（主題與文體偏向：${focusTopic}），必須嚴格包含以下三個科目及多元題型：
+      const prompt = `你係日本國際交流基金 JLPT 日本語能力試驗嘅首席命題委員。請為 JLPT ${level} 考生全新創作一份包含 ${targetTotal} 條題目、題型高度多元化且唔重複嘅模擬試卷（主題與文體偏向：${focusTopic}），必須嚴格包含以下三個科目及多元題型：
 - ${vocabQuota} 題 section 為 "vocab_grammar"（言語知識：必須涵蓋「漢字読み／表記」、「文脈規定／言い換え類義」、「用法」、「文法形式の判断」、以及至少1至2題「文の組み立て（＿＿ ＿＿ ★ ＿＿ 星號句子重組）」與「文章の文法（段落克漏字）」）
 - ${readingQuota} 題 section 為 "reading"（読解：必須提供 passageJp，並涵蓋多元文體：社内ビジネスメール／回覧板、エッセイ／科学・社会評論、情報検索（料金表・イベント案内板）、以及【A】と【B】の統合比較読解）
 - ${listeningQuota} 題 section 為 "listening"（聴解：必須涵蓋課題理解、ポイント理解、概要理解或即時応答；必須提供 audioScriptJp 及 dialogueSpeakers 陣列，包含男女雙人對話，每個 speaker 標明 "男" 或 "女"，lineJp 唔好重複寫 "男：" 或 "女：" 前綴）
@@ -1147,66 +1142,6 @@ ${text ? `學生提供嘅文字／影片筆記內容：\n"""\n${text}\n"""` : '�
       return res.json({ fallbackToWebSpeech: true });
     } catch {
       return res.json({ fallbackToWebSpeech: true });
-    }
-  });
-
-  // 7b-2a. AI Emotional Situation TTS Transcreation & Comparison (/api/ai/emotion-tts-transform)
-  app.post('/api/ai/emotion-tts-transform', async (req, res) => {
-    try {
-      const {
-        sentenceJp = '約束の時間に遅れないでください。',
-        situationId = 'angry-scolding',
-        situationLabelHk = '憤怒的責備',
-      } = req.body || {};
-
-      const ai = getAiClient();
-      if (!ai) {
-        return res.json({ fallbackToLocalEngine: true });
-      }
-
-      const prompt = `你係日本聲優語音導演及日語語感專家。請將以下普通日文句子：
-「${sentenceJp}」
-根據情境標籤【${situationLabelHk} (${situationId})】進行「情感化 TTS 台詞轉譯」，令 AI 語音合成讀出嚟時充滿鮮明嘅情境情緒（例如加入地道感嘆起首語、終助詞、重音詞或敬語轉換），並對比「普通平敘版」與「情感演繹版」嘅發音差異。
-
-請嚴格輸出 JSON 格式（唔好加 markdown code block），結構如下：
-{
-  "plainTranslationHk": "普通平敘版嘅廣東話字面翻譯",
-  "emotionalTextJp": "情感演繹版日文句子（所有漢字附振假名 漢字[かんじ]，加入貼合情境嘅感嘆詞／語氣助詞／標點）",
-  "emotionalCleanSpokenJp": "純日文句子（無振假名括號，供 TTS 直接朗讀）",
-  "emotionalTranslationHk": "情感演繹版嘅地道廣東話翻譯（突顯語氣差異）",
-  "pitchDeltaBadge": "音高起伏差異簡短標籤（例如：重音下沉 -8% · 句尾強音突刺）",
-  "speedDeltaBadge": "語速節奏差異簡短標籤（例如：1.08x 急促緊迫）",
-  "addedExpressionsJp": ["新增或轉換嘅關鍵情感表現1", "關鍵表現2", "關鍵表現3"],
-  "pronunciationDiffHk": "用廣東話詳細解釋普通版與情感演繹版喺音調起伏、語速、停頓同終助詞上面嘅發音差異",
-  "pronunciationDiffJa": "日本語での通常版と感情演技版のイントネーション・発音の違いの解説"
-}`;
-
-      const response = await generateFastAiContent(
-        ai,
-        {
-          contents: prompt,
-          config: {
-            responseMimeType: 'application/json',
-          },
-        },
-        5500
-      );
-
-      const rawText = (response.text ?? '').trim();
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.emotionalTextJp && parsed.pronunciationDiffHk) {
-          return res.json({
-            ...parsed,
-            generatedBy: 'ai-sensei',
-          });
-        }
-      }
-
-      return res.json({ fallbackToLocalEngine: true });
-    } catch {
-      return res.json({ fallbackToLocalEngine: true });
     }
   });
 
@@ -1801,9 +1736,9 @@ function generateSmartFallbackReply(
   const q = message.toLowerCase();
   const skillExecutionAppendix =
     Array.isArray(activeSkills) && activeSkills.length > 0
-      ? `\n\n---\n### ⚡ 已觸發 Antigravity Skills 執行結果（${activeSkills
+      ? `\n\n---\n### 已套用教學技能：${activeSkills
           .map((s) => `\`${s.name}\``)
-          .join(' + ')}）\n` +
+          .join(' + ')}\n` +
         activeSkills
           .map((s) => {
             if (s.name.includes('trap')) {

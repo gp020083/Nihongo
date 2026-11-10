@@ -10,10 +10,7 @@ import {
   X,
   UserCheck,
 } from 'lucide-react';
-import {
-  ALLOWED_OWNER_EMAIL,
-  verifyOwnerGoogleAccount,
-} from '../utils/srsEngine';
+import { verifyOwnerGoogleAccount } from '../utils/srsEngine';
 import { googleSignIn, logout } from '../utils/googleDriveSync';
 import { UiLang, formatBilingual } from '../data/listeningAndDictionaryData';
 
@@ -47,7 +44,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [testEmailInput, setTestEmailInput] = useState<string>(ALLOWED_OWNER_EMAIL);
+  const [testEmailInput, setTestEmailInput] = useState<string>('');
 
   const isAuthorized = Boolean(
     ownerSession && verifyOwnerGoogleAccount(ownerSession.email).allowed
@@ -86,7 +83,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
     } catch (err: any) {
       setErrorMsg(
         err?.message?.includes('popup')
-          ? '瀏覽器預覽視窗攔截咗彈出式 Google 視窗，請點擊下方「以擁有者帳號 (bentktk2024@gmail.com) 驗證進入」或允許彈出視窗。'
+          ? '瀏覽器攔截咗 Google 登入彈出視窗。請允許彈出視窗，或者用下面嘅 Email 核驗方式。'
           : err?.message || 'Google 登入失敗或已取消。'
       );
     } finally {
@@ -140,26 +137,22 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>
                 {formatBilingual(
-                  '言の葉道場・私人專屬 Google 帳號門禁',
-                  'オーナー専用 Google アカウント認証',
+                  '擁有者登入',
+                  'オーナーログイン',
                   uiLang
                 )}
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900">
               {isBlockingGate
-                ? '🔒 私人道場已鎖定 — 僅限擁有者 Google 帳號進入'
-                : '🔐 擁有者 Google 帳號登入與私密門禁管理'}
+                ? '道場已鎖定，請以擁有者帳號登入'
+                : '擁有者登入與門禁設定'}
             </h2>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              此日語精修系統綁定專屬擁有者 Google 帳號：
-              <strong
-                data-testid="allowed-owner-email-badge"
-                className="font-mono-num text-[#0284C7] ml-1"
-              >
-                {ALLOWED_OWNER_EMAIL}
-              </strong>
-              。其他未授權帳號一律拒絕存取。
+            <p
+              data-testid="allowed-owner-email-badge"
+              className="text-xs text-slate-600 leading-relaxed"
+            >
+              只限已設定嘅擁有者 Google 帳號使用，其他帳號會被拒絕。
             </p>
           </div>
 
@@ -189,13 +182,13 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                    <span>✓ 已驗證擁有者身份</span>
+                    <span>已驗證擁有者身份</span>
                     <span className="px-2 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 font-mono-num text-[11px]">
                       {ownerSession.verifiedAt}
                     </span>
                   </div>
-                  <div className="text-sm font-bold text-slate-900 font-mono-num">
-                    {ownerSession.email}
+                  <div className="text-sm font-bold text-slate-900">
+                    {ownerSession.displayName}
                   </div>
                 </div>
               </div>
@@ -214,7 +207,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
             {!isBlockingGate && (
               <div className="pt-2 border-t border-emerald-200 flex items-center justify-between gap-2">
                 <span className="text-xs text-emerald-800">
-                  你已成功以 <strong>{ALLOWED_OWNER_EMAIL}</strong> 登入，可自由使用全站功能及 Google Drive 同步。
+                  已登入，可以使用全部功能。
                 </span>
                 <button
                   type="button"
@@ -231,7 +224,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
             {/* Official Google Sign-In Popup Button */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
               <div className="text-xs font-bold text-slate-800">
-                方式 ①：Google OAuth 彈窗驗證（Firebase Google Sign-In）
+                方式一：Google 登入
               </div>
               <button
                 type="button"
@@ -243,8 +236,8 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                 <KeyRound className="w-4 h-4" />
                 <span>
                   {isSigningIn
-                    ? '正在連接 Google 驗證擁有者身份...'
-                    : `使用 Google 帳號登入（僅限 ${ALLOWED_OWNER_EMAIL}）`}
+                    ? '正在連接 Google…'
+                    : '使用 Google 帳號登入'}
                 </span>
               </button>
             </div>
@@ -252,7 +245,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
             {/* Direct Owner Email Verification (Works inside preview iframes without popup blocker) */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
               <div className="text-xs font-bold text-slate-800">
-                方式 ②：擁有者 Google 帳號白名單核驗（支援預覽環境／測試非擁有者攔截）
+                方式二：輸入擁有者 Email 核驗，適用於彈出視窗被攔截嘅情況
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
@@ -260,7 +253,8 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                   data-testid="owner-email-verify-input"
                   value={testEmailInput}
                   onChange={(e) => setTestEmailInput(e.target.value)}
-                  placeholder="輸入 Google Email 驗證存取權限..."
+                  placeholder="輸入 Google Email"
+                  autoComplete="email"
                   className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-mono-num text-slate-900 focus:outline-none focus:border-[#0284C7]"
                 />
                 <button
@@ -269,31 +263,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                   onClick={() => handleVerifyEmailAccess(testEmailInput)}
                   className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold cursor-pointer shrink-0"
                 >
-                  驗證 Google 帳號進入
-                </button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                <button
-                  type="button"
-                  data-testid="fill-owner-email-btn"
-                  onClick={() => {
-                    setTestEmailInput(ALLOWED_OWNER_EMAIL);
-                    handleVerifyEmailAccess(ALLOWED_OWNER_EMAIL);
-                  }}
-                  className="px-2.5 py-1 rounded bg-sky-50 text-[#0284C7] border border-sky-200 font-semibold hover:bg-sky-100 cursor-pointer"
-                >
-                  ⚡ 一鍵以本人帳號 ({ALLOWED_OWNER_EMAIL}) 登入
-                </button>
-                <button
-                  type="button"
-                  data-testid="test-intruder-email-btn"
-                  onClick={() => {
-                    setTestEmailInput('other.user@gmail.com');
-                    handleVerifyEmailAccess('other.user@gmail.com');
-                  }}
-                  className="px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200 font-semibold hover:bg-rose-100 cursor-pointer"
-                >
-                  🛡️ 測試非本人帳號攔截 (other.user@gmail.com)
+                  核驗並進入
                 </button>
               </div>
             </div>
@@ -308,7 +278,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
           >
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <div className="font-bold">存取權限攔截提示</div>
+              <div className="font-bold">登入失敗</div>
               <div>{errorMsg}</div>
             </div>
           </div>
@@ -334,10 +304,10 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
               ) : (
                 <Unlock className="w-3.5 h-3.5 text-slate-500" />
               )}
-              <span>啟動「全站強制門禁鎖定」模式</span>
+              <span>強制門禁鎖定</span>
             </div>
             <p className="text-[11px] text-slate-500">
-              開啟後，未登入 <code className="font-mono-num">{ALLOWED_OWNER_EMAIL}</code> 時會鎖定全站畫面。
+              開啟後，未以擁有者帳號登入時會鎖定全站畫面。
             </p>
           </div>
 
@@ -351,7 +321,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                 : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
             }`}
           >
-            {isGateLocked ? '🔒 強制門禁已開啟（點擊關閉）' : '🔓 開啟強制門禁鎖定'}
+            {isGateLocked ? '門禁已開啟，點擊關閉' : '開啟門禁鎖定'}
           </button>
         </div>
       </div>

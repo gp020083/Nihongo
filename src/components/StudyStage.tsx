@@ -18,7 +18,9 @@ import {
   Trash2,
   Square,
   Activity,
+  ChevronDown,
 } from 'lucide-react';
+import { getIntervalPreview } from '../utils/reviewQueue';
 import {
   JlptLevel,
   SrsCardState,
@@ -118,7 +120,10 @@ export const StudyStage: React.FC<StudyStageProps> = ({
 }) => {
   const [subMode, setSubMode] = useState<StudySubMode>('vocab');
   const [showFurigana, setShowFurigana] = useState(true);
-  const [showMeaning, setShowMeaning] = useState(true);
+  // Active recall: the answer side (reading, meaning, core image, example) stays hidden until revealed
+  const [showMeaning, setShowMeaning] = useState(false);
+  // "更多工具：跟讀・筆記" disclosure holding the shadowing studio and card note panel
+  const [showMoreTools, setShowMoreTools] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [stageShuffleOffset, setStageShuffleOffset] = useState(0);
   const [readingAnswerMap, setReadingAnswerMap] = useState<Record<string, number>>({});
@@ -237,6 +242,11 @@ export const StudyStage: React.FC<StudyStageProps> = ({
     setIsRecordingShadowing(false);
     setIsPlayingShadowingModel(false);
   }, [activeVocab?.id, activeSrsState?.note?.updatedAt]);
+
+  // Hide the answer again whenever the active flashcard changes
+  useEffect(() => {
+    setShowMeaning(false);
+  }, [activeVocab?.id, subMode]);
 
   /**
    * Plays the SRS Card's target example sentence using either AI-generated natural voice
@@ -836,7 +846,41 @@ export const StudyStage: React.FC<StudyStageProps> = ({
     if (!activeVocab) return;
     onRateCard(activeVocab.id, rating);
     setActiveCardIndex((prev) => (prev + 1) % allVocabForLevel.length);
+    // Drop focus from the clicked rating button so Space reveals the next card instead of re-rating
+    if (typeof document !== 'undefined') {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    }
   };
+
+  // Flashcard keyboard shortcuts: Space reveals the answer, 1-4 rate once revealed.
+  // Ignored while typing in inputs/textarea/select/contenteditable or when the pitch modal is open.
+  useEffect(() => {
+    if (subMode !== 'vocab' || !activeVocab) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && el.tagName) {
+        const tag = el.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable) return;
+      }
+      if (pitchVisualizerWord) return;
+      if (!showMeaning && (e.key === ' ' || e.code === 'Space')) {
+        e.preventDefault();
+        setShowMeaning(true);
+        return;
+      }
+      if (showMeaning) {
+        const ratingByKey: Record<string, SrsRating> = { '1': 'again', '2': 'hard', '3': 'good', '4': 'easy' };
+        const rating = ratingByKey[e.key];
+        if (rating) {
+          e.preventDefault();
+          handleSrsAction(rating);
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  });
 
   const handlePlayFullDialogue = (
     lines: Array<{ speaker: string; textJp: string }>
@@ -1175,12 +1219,12 @@ export const StudyStage: React.FC<StudyStageProps> = ({
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div
           data-testid="study-submode-tabs"
-          className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-xl self-start"
+          className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-xl self-start max-w-full"
         >
           <button
             type="button"
             onClick={() => setSubMode('vocab')}
-            className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors sm:whitespace-nowrap shrink-0 max-w-full text-left cursor-pointer ${
               subMode === 'vocab'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1196,7 +1240,7 @@ export const StudyStage: React.FC<StudyStageProps> = ({
           <button
             type="button"
             onClick={() => setSubMode('grammar')}
-            className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors sm:whitespace-nowrap shrink-0 max-w-full text-left cursor-pointer ${
               subMode === 'grammar'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1213,7 +1257,7 @@ export const StudyStage: React.FC<StudyStageProps> = ({
             type="button"
             data-testid="submode-nuance-analyzer-btn"
             onClick={() => setSubMode('nuance')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors sm:whitespace-nowrap shrink-0 max-w-full text-left cursor-pointer ${
               subMode === 'nuance'
                 ? 'bg-white text-[#0284C7] shadow-xs ring-1 ring-sky-200'
                 : 'text-slate-700 hover:text-slate-900 bg-sky-50/70'
@@ -1232,7 +1276,7 @@ export const StudyStage: React.FC<StudyStageProps> = ({
           <button
             type="button"
             onClick={() => setSubMode('listening')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors sm:whitespace-nowrap shrink-0 max-w-full text-left cursor-pointer ${
               subMode === 'listening'
                 ? 'bg-white text-[#0284C7] shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1251,7 +1295,7 @@ export const StudyStage: React.FC<StudyStageProps> = ({
           <button
             type="button"
             onClick={() => setSubMode('speaking')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors sm:whitespace-nowrap shrink-0 max-w-full text-left cursor-pointer ${
               subMode === 'speaking'
                 ? 'bg-white text-[#0284C7] shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1270,7 +1314,7 @@ export const StudyStage: React.FC<StudyStageProps> = ({
           <button
             type="button"
             onClick={() => setSubMode('reading')}
-            className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors sm:whitespace-nowrap shrink-0 max-w-full text-left cursor-pointer ${
               subMode === 'reading'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1286,7 +1330,7 @@ export const StudyStage: React.FC<StudyStageProps> = ({
           <button
             type="button"
             onClick={() => setSubMode('cultural')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors sm:whitespace-nowrap shrink-0 max-w-full text-left cursor-pointer ${
               subMode === 'cultural'
                 ? 'bg-white text-[#0284C7] shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -1321,6 +1365,8 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                 </span>
                 <span aria-hidden="true">·</span>
                 <span>{activeVocab.partOfSpeech}</span>
+                {showMeaning && (
+                  <>
                 <span aria-hidden="true">·</span>
                 <button
                   type="button"
@@ -1343,6 +1389,8 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                     {uiLang === 'ja' ? 'アクセント' : '音調'} {activeVocab.pitchAccent}
                   </span>
                 </button>
+                  </>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1367,95 +1415,69 @@ export const StudyStage: React.FC<StudyStageProps> = ({
               </div>
             </div>
 
-            {/* Primary Kanji & Reading Anchor */}
+            {/* Primary Kanji & Reading Anchor (front side: only the word until revealed) */}
             <div className="py-4 space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-4">
-                <div>
-                  {showFurigana && (
-                    <div className="text-sm font-medium text-[#0284C7] mb-1">
+              <div className="flex flex-col items-center text-center gap-3">
+                <div
+                  data-testid="study-card-reading"
+                  className="min-h-[1.25rem] text-sm font-medium text-[#0284C7]"
+                >
+                  {showMeaning && showFurigana && (
+                    <>
                       {activeVocab.reading} ·{' '}
                       <span className="font-mono-num text-slate-500">{activeVocab.romaji}</span>
-                    </div>
+                    </>
                   )}
-                  <h3 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-900">
-                    {activeVocab.kanji}
-                  </h3>
                 </div>
+                <h3
+                  data-testid="study-front-word"
+                  lang="ja"
+                  className="font-jp font-semibold tracking-tight text-slate-900 leading-tight"
+                  style={{
+                    fontFamily: '"Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif',
+                    fontSize: 'clamp(36px, 12vw, 56px)',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {activeVocab.kanji || activeVocab.reading}
+                </h3>
 
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     type="button"
-                    onClick={() => speakJapanese(activeVocab.kanji)}
+                    onClick={() => speakJapanese(activeVocab.kanji || activeVocab.reading)}
                     aria-label={`朗讀單字 ${activeVocab.kanji}`}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#0284C7] bg-sky-50 hover:bg-sky-100 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     <Volume2 className="w-4 h-4" />
                     <span>{uiLang === 'ja' ? '発音' : '單字發音'}</span>
                   </button>
-                  <PitchVisualizerIconButton
-                    testId="srs-pitch-visualizer-btn"
-                    word={{
-                      kanji: activeVocab.kanji,
-                      reading: activeVocab.reading,
-                      pitchAccent: activeVocab.pitchAccent,
-                      romaji: activeVocab.romaji,
-                      partOfSpeech: activeVocab.partOfSpeech,
-                      meaning: activeVocab.meaning,
-                    }}
-                    uiLang={uiLang}
-                    onOpen={setPitchVisualizerWord}
-                  />
-                  <button
-                    type="button"
-                    data-testid="srs-card-shadowing-toggle-btn"
-                    onClick={() => {
-                      setShowMeaning(true);
-                      setShowShadowingPanel((prev) => !prev);
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      showShadowingPanel
-                        ? 'bg-[#0284C7] text-white border-[#0284C7] shadow-xs'
-                        : 'bg-sky-50 text-[#0284C7] border-sky-200 hover:bg-sky-100'
-                    }`}
-                  >
-                    <Mic className="w-3.5 h-3.5" />
-                    <span>
-                      {formatBilingual(
-                        'Shadowing (跟讀) 挑戰',
-                        'シャドーイング挑戦',
-                        uiLang
-                      )}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="card-note-toggle-btn"
-                    onClick={() => setShowNotePanel((prev) => !prev)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                      showNotePanel
-                        ? 'bg-amber-50 text-amber-900 border-amber-300'
-                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                    }`}
-                  >
-                    <StickyNote className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{formatBilingual('筆記註解', 'メモ・音声', uiLang)}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowMeaning((m) => !m)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>
-                      {showMeaning
-                        ? uiLang === 'ja'
-                          ? '意味を隠す'
-                          : '遮蓋釋義自測'
-                        : uiLang === 'ja'
-                          ? '意味を表示'
-                          : '顯示釋義'}
-                    </span>
-                  </button>
+                  {showMeaning && (
+                    <PitchVisualizerIconButton
+                      testId="srs-pitch-visualizer-btn"
+                      word={{
+                        kanji: activeVocab.kanji,
+                        reading: activeVocab.reading,
+                        pitchAccent: activeVocab.pitchAccent,
+                        romaji: activeVocab.romaji,
+                        partOfSpeech: activeVocab.partOfSpeech,
+                        meaning: activeVocab.meaning,
+                      }}
+                      uiLang={uiLang}
+                      onOpen={setPitchVisualizerWord}
+                    />
+                  )}
+                  {showMeaning && (
+                    <button
+                      type="button"
+                      data-testid="study-hide-answer-btn"
+                      onClick={() => setShowMeaning(false)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>{uiLang === 'ja' ? '意味を隠す' : '遮蓋釋義自測'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1496,9 +1518,16 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                         <button
                           type="button"
                           data-testid="example-shadowing-challenge-btn"
-                          onClick={() => setShowShadowingPanel((prev) => !prev)}
+                          onClick={() => {
+                            if (showMoreTools && showShadowingPanel) {
+                              setShowShadowingPanel(false);
+                            } else {
+                              setShowMoreTools(true);
+                              setShowShadowingPanel(true);
+                            }
+                          }}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg border transition-colors cursor-pointer ${
-                            showShadowingPanel
+                            showMoreTools && showShadowingPanel
                               ? 'bg-[#0284C7] text-white border-[#0284C7]'
                               : 'bg-white text-[#0284C7] border-sky-300 hover:bg-sky-50'
                           }`}
@@ -1506,10 +1535,10 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                           <Mic className="w-3.5 h-3.5" />
                           <span>
                             {formatBilingual(
-                              showShadowingPanel
+                              showMoreTools && showShadowingPanel
                                 ? '收起 Shadowing 跟讀挑戰'
                                 : '🎙️ Shadowing (跟讀) 挑戰',
-                              showShadowingPanel
+                              showMoreTools && showShadowingPanel
                                 ? 'シャドーイングを閉じる'
                                 : '🎙️ シャドーイング挑戦',
                               uiLang
@@ -1522,7 +1551,148 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                       <FuriganaText text={activeVocab.exampleJp} showFurigana={showFurigana} />
                     </div>
                     <div className="text-sm text-slate-600">{activeVocab.exampleHk}</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-6 text-center space-y-3">
+                  <p className="text-sm text-slate-500">
+                    {formatBilingual(
+                      '先喺腦海回想讀音、意思同點樣造句，再顯示答案',
+                      '読み方・意味・使い方を思い出してから答えを見ましょう',
+                      uiLang
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    data-testid="study-reveal-btn"
+                    onClick={() => setShowMeaning(true)}
+                    className="w-full sm:w-auto sm:min-w-[240px] px-6 py-3 text-sm font-semibold text-white bg-[#2B4C7E] hover:bg-[#233F69] rounded-xl transition-colors cursor-pointer"
+                  >
+                    {formatBilingual('顯示答案', '答えを見る', uiLang, ' / ')}
+                  </button>
+                  <p className="hidden sm:block text-[11px] text-slate-400">
+                    {formatBilingual('撳 Space 顯示答案，之後用 1–4 評分', 'Space で表示、1–4 で評価', uiLang)}
+                  </p>
+                </div>
+              )}
+            </div>
 
+            {/* SM-2 Spaced Repetition Rating Bar */}
+            <div className="pt-4 border-t border-slate-200 space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>
+                  {uiLang === 'ja'
+                    ? '記憶の定着度を選択してください（SM-2 アルゴリズムが次回復習日を計算します）：'
+                    : '根據你啱啱回想嘅熟練度揀選，系統會自動計算下次最佳複習時間 (SM-2 SRS)：'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onAskSenseiWithContext(
+                      `Sensei，請問「${activeVocab.kanji}（${activeVocab.reading}）」仲有咩常見搭配或者相近詞分別？可以用廣東話再舉兩個生活例子嗎？`,
+                      activeVocab
+                    )
+                  }
+                  className="inline-flex items-center gap-1 font-semibold text-[#0284C7] hover:underline whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{uiLang === 'ja' ? 'AI講師に詳しく聞く' : '問 AI 導師深入用法'}</span>
+                </button>
+              </div>
+
+              <div
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2.5"
+                role="group"
+                aria-label={formatBilingual('記憶評分', '記憶の評価', uiLang)}
+                title={
+                  showMeaning
+                    ? undefined
+                    : formatBilingual('請先顯示答案再評分', '先に答えを表示してください', uiLang)
+                }
+              >
+                {(
+                  [
+                    { rating: 'again', key: '1', label: '▲ 唔記得 (Again)', cls: 'border-red-200 bg-red-50/70 hover:bg-red-100 text-red-800', sub: 'text-red-600' },
+                    { rating: 'hard', key: '2', label: '◆ 有啲kick (Hard)', cls: 'border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900', sub: 'text-amber-700' },
+                    { rating: 'good', key: '3', label: '● 記得清楚 (Good)', cls: 'border-sky-200 bg-sky-50/70 hover:bg-sky-100 text-sky-900', sub: 'text-sky-700' },
+                    { rating: 'easy', key: '4', label: '★ 秒答精熟 (Easy)', cls: 'border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900', sub: 'text-emerald-700' },
+                  ] as Array<{ rating: SrsRating; key: string; label: string; cls: string; sub: string }>
+                ).map((btn) => (
+                  <button
+                    key={btn.rating}
+                    type="button"
+                    data-testid={`study-rate-${btn.rating}`}
+                    disabled={!showMeaning}
+                    aria-keyshortcuts={btn.key}
+                    onClick={() => handleSrsAction(btn.rating)}
+                    className={`flex flex-col items-center justify-center py-2.5 px-3 rounded-lg border transition-colors ${btn.cls} ${
+                      showMeaning ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed pointer-events-none'
+                    }`}
+                  >
+                    <span className="text-xs font-bold">{btn.label}</span>
+                    <span className={`text-[11px] font-mono-num mt-0.5 ${btn.sub}`}>
+                      {getIntervalPreview(activeSrsState, btn.rating, uiLang)}
+                      <span className="hidden sm:inline text-slate-400"> · {btn.key}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* More tools disclosure: shadowing studio + card note & voice annotation (closed by default) */}
+            <div className="border-t border-slate-200 pt-3">
+              <button
+                type="button"
+                data-testid="study-more-tools-toggle"
+                aria-expanded={showMoreTools}
+                aria-controls="study-more-tools-panel"
+                onClick={() => setShowMoreTools((prev) => !prev)}
+                className="w-full flex items-center justify-between gap-2 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900 cursor-pointer"
+              >
+                <span>{formatBilingual('更多工具：跟讀・筆記', 'その他ツール：シャドーイング・メモ', uiLang)}</span>
+                <ChevronDown
+                  className={`w-4 h-4 shrink-0 transition-transform ${showMoreTools ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {showMoreTools && (
+                <div id="study-more-tools-panel" data-testid="study-more-tools-panel" className="mt-2 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    data-testid="srs-card-shadowing-toggle-btn"
+                    onClick={() => {
+                      setShowMeaning(true);
+                      setShowShadowingPanel((prev) => !prev);
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      showShadowingPanel
+                        ? 'bg-[#0284C7] text-white border-[#0284C7] shadow-xs'
+                        : 'bg-sky-50 text-[#0284C7] border-sky-200 hover:bg-sky-100'
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    <span>
+                      {formatBilingual(
+                        'Shadowing (跟讀) 挑戰',
+                        'シャドーイング挑戦',
+                        uiLang
+                      )}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="card-note-toggle-btn"
+                    onClick={() => setShowNotePanel((prev) => !prev)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                      showNotePanel
+                        ? 'bg-amber-50 text-amber-900 border-amber-300'
+                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                    }`}
+                  >
+                    <StickyNote className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{formatBilingual('筆記註解', 'メモ・音声', uiLang)}</span>
+                  </button>
+                  </div>
                     {/* Interactive SRS Card Shadowing (跟讀) Challenge Studio */}
                     {showShadowingPanel && (
                       <section
@@ -1918,23 +2088,6 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                         })()}
                       </section>
                     )}
-                  </div>
-                </div>
-              ) : (
-                <div className="py-10 text-center bg-slate-50 border border-dashed border-slate-300 rounded-lg space-y-3">
-                  <p className="text-sm text-slate-600">
-                    請先喺腦海回想「{activeVocab.kanji}」嘅讀音、意思同埋點樣造句（主動提取 Active Recall）
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowMeaning(true)}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#0284C7] hover:bg-sky-700 rounded-lg transition-colors"
-                  >
-                    揭曉答案並評分
-                  </button>
-                </div>
-              )}
-
               {/* SRS Card Note & Voice Annotation Panel (文字及語音備註，與卡片數據同步儲存) */}
               {showNotePanel && (
                 <section
@@ -2144,73 +2297,8 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                   </div>
                 </section>
               )}
-            </div>
-
-            {/* SM-2 Spaced Repetition Rating Bar */}
-            <div className="pt-4 border-t border-slate-200 space-y-3">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>
-                  {uiLang === 'ja'
-                    ? '記憶の定着度を選択してください（SM-2 アルゴリズムが次回復習日を計算します）：'
-                    : '根據你啱啱回想嘅熟練度揀選，系統會自動計算下次最佳複習時間 (SM-2 SRS)：'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onAskSenseiWithContext(
-                      `Sensei，請問「${activeVocab.kanji}（${activeVocab.reading}）」仲有咩常見搭配或者相近詞分別？可以用廣東話再舉兩個生活例子嗎？`,
-                      activeVocab
-                    )
-                  }
-                  className="inline-flex items-center gap-1 font-semibold text-[#0284C7] hover:underline whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{uiLang === 'ja' ? 'AI講師に詳しく聞く' : '問 AI 導師深入用法'}</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => handleSrsAction('again')}
-                  className="flex flex-col items-center justify-center py-2.5 px-3 rounded-lg border border-red-200 bg-red-50/70 hover:bg-red-100 text-red-800 transition-colors cursor-pointer"
-                >
-                  <span className="text-xs font-bold">▲ 唔記得 (Again)</span>
-                  <span className="text-[11px] font-mono-num text-red-600 mt-0.5">
-                    {getSrsPreviewLabel(activeSrsState, 'again')}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSrsAction('hard')}
-                  className="flex flex-col items-center justify-center py-2.5 px-3 rounded-lg border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-900 transition-colors cursor-pointer"
-                >
-                  <span className="text-xs font-bold">◆ 有啲kick (Hard)</span>
-                  <span className="text-[11px] font-mono-num text-amber-700 mt-0.5">
-                    {getSrsPreviewLabel(activeSrsState, 'hard')}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSrsAction('good')}
-                  className="flex flex-col items-center justify-center py-2.5 px-3 rounded-lg border border-sky-200 bg-sky-50/70 hover:bg-sky-100 text-sky-900 transition-colors cursor-pointer"
-                >
-                  <span className="text-xs font-bold">● 記得清楚 (Good)</span>
-                  <span className="text-[11px] font-mono-num text-sky-700 mt-0.5">
-                    {getSrsPreviewLabel(activeSrsState, 'good')}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSrsAction('easy')}
-                  className="flex flex-col items-center justify-center py-2.5 px-3 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900 transition-colors cursor-pointer"
-                >
-                  <span className="text-xs font-bold">★ 秒答精熟 (Easy)</span>
-                  <span className="text-[11px] font-mono-num text-emerald-700 mt-0.5">
-                    {getSrsPreviewLabel(activeSrsState, 'easy')}
-                  </span>
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2240,8 +2328,8 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                     <button
                       type="button"
                       onClick={() => {
+                        // Jumping to a card starts on its front side (active recall)
                         setActiveCardIndex(idx);
-                        setShowMeaning(true);
                       }}
                       className="min-w-0 flex-1 text-left cursor-pointer"
                     >
@@ -2249,7 +2337,9 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                         <span className="font-bold text-base text-slate-900 truncate">
                           {item.kanji}
                         </span>
-                        <span className="text-xs text-slate-500 truncate">{item.reading}</span>
+                        <span className="text-xs text-slate-500 truncate">
+                          {isSelected && !showMeaning ? '・・・' : item.reading}
+                        </span>
                         {cardHasNote && (
                           <span
                             data-testid={`deck-note-badge-${item.id}`}
@@ -2260,7 +2350,9 @@ export const StudyStage: React.FC<StudyStageProps> = ({
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-600 truncate mt-0.5">{item.meaning}</div>
+                      <div className="text-xs text-slate-600 truncate mt-0.5">
+                        {isSelected && !showMeaning ? '・・・' : item.meaning}
+                      </div>
                       {cardHasNote && st?.note?.textNote && (
                         <div className="text-[11px] text-amber-800 truncate mt-0.5">
                           📝 {st.note.textNote}

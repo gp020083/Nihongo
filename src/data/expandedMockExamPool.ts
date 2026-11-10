@@ -21,7 +21,7 @@ export const MOCK_EXAM_THEME_OPTIONS: MockExamThemeOption[] = [
     id: 'all',
     labelZh: '🎲 全題型多元混合（星號重組・AB比較・商務・聽解）',
     labelJa: '🎲 全形式ランダム（★並べ替え・AB比較・ビジネス・聴解）',
-    promptHint: '全真多元題型：包含★星號句子重組、段落文法、AB比較讀解、情報檢索及男女對話聽解',
+    promptHint: '多元題型：包含★星號句子重組、段落文法、AB比較讀解、情報檢索及男女對話聽解',
   },
   {
     id: 'star_and_ab',
